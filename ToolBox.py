@@ -52,8 +52,8 @@ class DataFrameAnalyzer:
         # Memory usage
         total_memory_deep = df.memory_usage(deep=True).sum()
         total_memory_shallow = df.memory_usage(deep=False).sum()
-        mem_info_deep = pd.Series([total_memory_deep], index=["Deep Memory Usage (Bytes)"], name="Memory")
-        mem_info_shallow = pd.Series([total_memory_shallow], index=["Shallow Memory Usage (Bytes)"], name="Memory")
+        mem_info_deep = pd.Series([total_memory_deep], index=["Deep(Bytes)"], name="Memory")
+        mem_info_shallow = pd.Series([total_memory_shallow], index=["Shallow (Bytes)"], name="Memory")
 
         # Total nulls
         total_nulls = pd.Series({'Total Null Counts': df.isnull().sum().sum()})
