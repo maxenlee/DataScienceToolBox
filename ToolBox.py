@@ -47,7 +47,7 @@ class DataFrameAnalyzer:
 
         # Data types counts
         all_dtypes = list(df.dtypes.unique())
-        dtype_counts = pd.Series(0, index=all_dtypes, name="Dtype Counts").update(df.dtypes.value_counts())
+        dtype_counts = pd.Series(df.dtypes.value_counts(), index=all_dtypes, name="Dtype Counts")
 
         
 
