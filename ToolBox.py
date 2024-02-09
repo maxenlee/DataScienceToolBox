@@ -1,3 +1,5 @@
+import pandas as pd
+
 class DataFrameAnalyzer:
     def __init__(self):
         """
@@ -7,29 +9,19 @@ class DataFrameAnalyzer:
         """
         pass
 
-    def analyze(self, data):
-        """
-        Analyze the given dictionary of DataFrames and return a summary of their shapes,
-        data types, and memory usage.
-
-        Parameters:
-        - data: A dictionary with string keys and pandas DataFrame values.
-
-        Returns:
-        A pandas DataFrame summarizing the analysis.
-        """
+    def analyzer(self,dict_df):
         # Initialize a dictionary to store the analysis results
         analysis_results = {}
 
         # Identify all unique data types across all data frames
         all_dtypes = set()
-        for df in data.values():
+        for df in dict_df.values():
             all_dtypes.update(df.dtypes.unique())
 
         # Convert set of dtypes to a list for consistent ordering
         all_dtypes = list(all_dtypes)
 
-        for name, df in data.items():
+        for name, df in dict_df.items():
             # Shape of the DataFrame
             shape_info = pd.Series(df.shape, index=["rows", "columns"], name="Shape")
 
