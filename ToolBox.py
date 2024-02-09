@@ -57,6 +57,8 @@ class DataFrameAnalyzer:
         # Total unique values
         total_unique_values = pd.Series({'Unique': sum(df.nunique())})
 
+        total_size = pd.Series({'Size': df.size()})
+
         # Memory usage
         total_memory_deep = df.memory_usage(deep=True).sum()
         total_memory_shallow = df.memory_usage(deep=False).sum()
@@ -64,7 +66,7 @@ class DataFrameAnalyzer:
         mem_info_shallow = pd.Series([total_memory_shallow], index=["Shallow (Bytes)"], name="Memory")
 
         # Combining all information into a single summary
-        summary_stats = pd.concat([shape_info, dtype_counts, total_nulls, total_unique_values, mem_info_deep, mem_info_shallow])
+        summary_stats = pd.concat([shape_info, dtype_counts, total_nulls, total_unique_values,total_size, mem_info_deep, mem_info_shallow])
 
         return summary_stats
 
