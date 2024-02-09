@@ -52,10 +52,10 @@ class DataFrameAnalyzer:
         
 
         # Total nulls
-        total_nulls = pd.Series({'Total Null Counts': df.isnull().sum().sum()})
+        total_nulls = pd.Series({'Nulls': df.isnull().sum().sum()})
 
         # Total unique values
-        total_unique_values = pd.Series({'Total Unique Values': sum(df.nunique())})
+        total_unique_values = pd.Series({'Unique': sum(df.nunique())})
 
         # Memory usage
         total_memory_deep = df.memory_usage(deep=True).sum()
