@@ -49,11 +49,7 @@ class DataFrameAnalyzer:
         all_dtypes = list(df.dtypes.unique())
         dtype_counts = pd.Series(0, index=all_dtypes, name="Dtype Counts").update(df.dtypes.value_counts())
 
-        # Memory usage
-        total_memory_deep = df.memory_usage(deep=True).sum()
-        total_memory_shallow = df.memory_usage(deep=False).sum()
-        mem_info_deep = pd.Series([total_memory_deep], index=["Deep(Bytes)"], name="Memory")
-        mem_info_shallow = pd.Series([total_memory_shallow], index=["Shallow (Bytes)"], name="Memory")
+        
 
         # Total nulls
         total_nulls = pd.Series({'Total Null Counts': df.isnull().sum().sum()})
@@ -61,8 +57,14 @@ class DataFrameAnalyzer:
         # Total unique values
         total_unique_values = pd.Series({'Total Unique Values': sum(df.nunique())})
 
+        # Memory usage
+        total_memory_deep = df.memory_usage(deep=True).sum()
+        total_memory_shallow = df.memory_usage(deep=False).sum()
+        mem_info_deep = pd.Series([total_memory_deep], index=["Deep(Bytes)"], name="Memory")
+        mem_info_shallow = pd.Series([total_memory_shallow], index=["Shallow (Bytes)"], name="Memory")
+
         # Combining all information into a single summary
-        summary_stats = pd.concat([shape_info, dtype_counts, mem_info_deep, mem_info_shallow, total_nulls, total_unique_values])
+        summary_stats = pd.concat([shape_info, dtype_counts, total_nulls, total_unique_values, mem_info_deep, mem_info_shallow])
 
         return summary_stats
 
