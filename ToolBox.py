@@ -1,16 +1,16 @@
-def analyzer(dict_df):
+def analyzer(data):
     # Initialize a dictionary to store the analysis results
     analysis_results = {}
     
     # Identify all unique data types across all data frames
     all_dtypes = set()
-    for df in dict_df.values():
+    for df in data.values():
         all_dtypes.update(df.dtypes.unique())
     
     # Convert set of dtypes to a list for consistent ordering
     all_dtypes = list(all_dtypes)
     
-    for name, df in dict_df.items():
+    for name, df in data.items():
         # Shape of the DataFrame
         shape_info = pd.Series(df.shape, index=["rows", "columns"], name="Shape")
         
@@ -36,5 +36,5 @@ def analyzer(dict_df):
 
 
 
-result = analyzer(dict_df)
+result = analyzer(data)
 print(result)
