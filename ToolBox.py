@@ -57,7 +57,7 @@ class DataFrameAnalyzer:
         # Total unique values
         total_unique_values = pd.Series({'Unique': sum(df.nunique())})
 
-        total_size = pd.Series({'Size': df.size()})
+        total_size = pd.Series({'Size': df.size})
 
         # Memory usage
         total_memory_deep = df.memory_usage(deep=True).sum()
