@@ -6,8 +6,7 @@ class DataFrameAnalyzer:
 
     def analyze(self):
         df = self._obj  # The DataFrame to analyze
-        analysis_results = {}
-
+        
         # Identify all unique data types in the DataFrame
         all_dtypes = list(df.dtypes.unique())
 
@@ -16,15 +15,28 @@ class DataFrameAnalyzer:
 
         # Initialize dtype counts series with zeros for all identified dtypes
         dtype_counts = pd.Series(0, index=all_dtypes, name="Dtype Counts")
-        # Update counts with actual values
         dtype_counts.update(df.dtypes.value_counts())
 
-        # Memory usage (in bytes)
-        total_memory = df.memory_usage(deep=True).sum()
-        mem_info = pd.Series([total_memory], index=["Memory Usage (Bytes)"], name="Memory")
+        # Deep memory usage (in bytes)
+        deep_memory_usage = df.memory_usage(deep=True).sum()
+        deep_mem_info = pd.Series([deep_memory_usage], index=["Deep Memory Usage (Bytes)"], name="Memory")
 
-        # Combine all information into a single DataFrame for analysis
-        summary_df = pd.concat([shape_info, dtype_counts, mem_info])
+        # Shallow memory usage (in bytes)
+        shallow_memory_usage = df.memory_usage(deep=False).sum()
+        shallow_mem_info = pd.Series([shallow_memory_usage], index=["Shallow Memory Usage (Bytes)"], name="Memory")
+
+        # Count of nulls per column
+        null_counts = df.isnull().sum().rename("Null Counts")
+
+        # Unique values per column
+        unique_values = df.nunique().rename("Unique Values")
+
+        # Summary statistics for numeric columns
+        numeric_stats = df.describe().transpose()
+
+        # Combining all information
+        summary_df = pd.concat([shape_info, dtype_counts, deep_mem_info, shallow_mem_info, null_counts, unique_values], axis=0)
+        summary_df = pd.concat([summary_df, numeric_stats], axis=0, sort=False)
 
         return summary_df
 
