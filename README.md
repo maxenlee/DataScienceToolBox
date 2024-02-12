@@ -1,20 +1,25 @@
 How to Import to python
-
+```
 !git clone https://github.com/maxenlee/DataScienceToolBox
+```
+```
 import ToolBox
-
 import sys
+```
+```
 sys.path.append('/content/DataScienceToolBox')
-
-For the Analyze Function
-
+```
+i.e. For the Analyze Function
+```
+#if DataFrame is in a dictionary
 dict_df["df_000"].df_kit.analyze()
-
+```
+```
 df_summ = pd.DataFrame()
 for i in dict_df:
   df_summ[i] = dict_df[i].df_kit.analyze()
 df_summ.transpose()
-
+```
 
 
 
