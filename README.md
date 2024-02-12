@@ -1,4 +1,4 @@
-How to Import to python
+How to Import to Python
 ```
 !git clone https://github.com/maxenlee/DataScienceToolBox
 ```
