@@ -3,11 +3,9 @@ How to Import to Python
 !git clone https://github.com/maxenlee/DataScienceToolBox
 ```
 ```
-import ToolBox
 import sys
-```
-```
 sys.path.append('/content/DataScienceToolBox')
+from ToolBox import DataFrameAnalyzer
 ```
 i.e. For the Analyze Function
 ```
