@@ -1,6 +1,6 @@
 How to Import to Python
 ```
-! curl -s -O 'https://raw.githubusercontent.com/maxenlee/DataScienceToolBox/test/ToolBox.py'
+! curl -s -O 'https://raw.githubusercontent.com/maxenlee/DataScienceToolBox/main/ToolBox.py'
 from ToolBox import DataFrameAnalyzer
 ```
 i.e. For the Analyze Function
