@@ -41,34 +41,34 @@ class DataFrameAnalyzer:
         of the DataFrame, with each statistic as an item in the Series.
         """
         df = self._obj  # The DataFrame to analyze
+    
+## Yo, Maxen ==>>>>  Were you wanting to do something like this?
 
-        # Shape of the DataFrame
-        shape_info = pd.Series(df.shape, index=["rows", "columns"], name="Shape")
-
-        # Data types counts
-        all_dtypes = list(df.dtypes.unique())
-        dtype_counts = pd.Series(df.dtypes.value_counts(), index=all_dtypes, name="Dtype Counts")
-
+        # Analysis logic for a single DataFrame
+        analysis_results = {}
         
-
+        # Shape of the DataFrame
+        analysis_results["shape_info"] = pd.Series(df.shape, index=["rows", "columns"])
+        
+        # Identify all unique data types in the DataFrame
+        analysis_results["dtype_counts"] = df.dtypes.value_counts()
+        
         # Total nulls
-        total_nulls = pd.Series({'Nulls': df.isnull().sum().sum()})
+        analysis_results["total_nulls"] = pd.Series({'Nulls': df.isnull().sum().sum()})
+
+        # Memory usage (in bytes)
+        analysis_results["Deep(Bytes)"] = df.memory_usage(deep=True).sum()
+        analysis_results["Shallow (Bytes)"] = df.memory_usage(deep=False).sum()
 
         # Total unique values
-        total_unique_values = pd.Series({'Unique': sum(df.nunique())})
+        analysis_results["total_unique_values"] = pd.Series({'Unique': sum(df.nunique())})
 
-        total_size = pd.Series({'Size': df.size})
+        # Total size
+        analysis_results["total_size"] = pd.Series({'Size': df.size})
+        
+        # Combine all information into a single DataFrame for analysis
+        return  pd.concat(analysis_results.values())
 
-        # Memory usage
-        total_memory_deep = df.memory_usage(deep=True).sum()
-        total_memory_shallow = df.memory_usage(deep=False).sum()
-        mem_info_deep = pd.Series([total_memory_deep], index=["Deep(Bytes)"], name="Memory")
-        mem_info_shallow = pd.Series([total_memory_shallow], index=["Shallow (Bytes)"], name="Memory")
-
-        # Combining all information into a single summary
-        summary_stats = pd.concat([shape_info, dtype_counts, total_nulls, total_unique_values,total_size, mem_info_deep, mem_info_shallow])
-
-        return summary_stats
 
 # Register the custom accessor on pandas DataFrame with the name "df_kit"
 pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
