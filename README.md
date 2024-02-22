@@ -1,10 +1,6 @@
 How to Import to Python
 ```
-!git clone https://github.com/maxenlee/DataScienceToolBox
-```
-```
-import sys
-sys.path.append('/content/DataScienceToolBox')
+! curl -s -O 'https://raw.githubusercontent.com/maxenlee/DataScienceToolBox/test/ToolBox.py'
 from ToolBox import DataFrameAnalyzer
 ```
 i.e. For the Analyze Function
