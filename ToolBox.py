@@ -1,8 +1,5 @@
 import pandas as pd
-
 from google.cloud import bigquery
-import pandas as pd
-
 
 class DataFrameAnalyzer:
     """
@@ -46,8 +43,6 @@ class DataFrameAnalyzer:
         """
         df = self._obj  # The DataFrame to analyze
     
-## Yo, Maxen ==>>>>  Were you wanting to do something like this?
-
         # Analysis logic for a single DataFrame
         analysis_results = {}
         
@@ -61,8 +56,8 @@ class DataFrameAnalyzer:
         analysis_results["total_nulls"] = pd.Series({'Nulls': df.isnull().sum().sum()})
 
         # Memory usage (in bytes)
-        analysis_results["Deep(Bytes)"] = df.memory_usage(deep=True).sum()
-        analysis_results["Shallow (Bytes)"] = df.memory_usage(deep=False).sum()
+        analysis_results["Deep(Bytes)"] = pd.Series({"Deep(Bytes)":df.memory_usage(deep=True).sum()})
+        analysis_results["Shallow (Bytes)"] = pd.Series({"Shallow (Bytes)":df.memory_usage(deep=False).sum()})
 
         # Total unique values
         analysis_results["total_unique_values"] = pd.Series({'Unique': sum(df.nunique())})
@@ -81,7 +76,7 @@ pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
 
 # ToolBox.py
 
-import pandas as pd
+
 from google.cloud import bigquery as bq
 from IPython.core.magic import register_cell_magic
 from IPython.display import display
