@@ -142,10 +142,6 @@ def bigquery(line, cell):
 
 # Additional ToolBox classes and functions as needed...
 
-if __name__ == "__main__":
-    # Code to execute when the module is run as a script
-    # For example, test your configure_bigquery and bigquery magic function here
-
 
 
 if __name__ == "__main__":
