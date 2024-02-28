@@ -142,7 +142,7 @@ def run_query(sample_query, client=client, dry_run=False):
 
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     # Code to execute when the module is run as a script
     # For example, test your run_query function here
 
