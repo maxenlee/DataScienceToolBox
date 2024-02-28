@@ -78,6 +78,12 @@ class DataFrameAnalyzer:
 pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
 
 
+
+
+
+# Ensure that the BigQuery client is initialized
+client = bigquery.Client(project='your-project-id')
+
 def run_query(sample_query, client=client, dry_run=False):
     """
     Run or estimate the cost of a BigQuery query.
