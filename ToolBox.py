@@ -138,7 +138,7 @@ def bigquery(line, cell):
 
     if dry_run:
       
-        job_config = bq.QueryJobConfig(maximumBytesBilled = gb,dry_run=dry_run, use_query_cache=not dry_run)
+        job_config = bq.QueryJobConfig(maximum_bytes_billed = gb,dry_run=dry_run, use_query_cache=not dry_run)
         query_job = client.query(formatted_query, job_config=job_config)  # Use the formatted query
         
         bytes_processed = query_job.total_bytes_processed
