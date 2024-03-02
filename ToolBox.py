@@ -159,7 +159,7 @@ def bigquery(line, cell):
 
 def handle_dry_run(query_job):
     bytes_processed = query_job.total_bytes_processed
-    logger.info(f"Dry run: Estimated bytes to be processed: {bytes_processed} bytes.")
+    print(logger.info(f"Dry run: Estimated bytes to be processed: {bytes_processed} bytes."))
     cost_per_tb = 5  # Assume $5 per TB as the cost
     estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
     logger.info(f"Estimated cost of the query: ${estimated_cost:.2f}")
