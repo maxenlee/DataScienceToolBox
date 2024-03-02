@@ -90,8 +90,7 @@
 
 
 
-
-# ToolBox.py
+# Import necessary libraries
 import json
 import os
 import pandas as pd
@@ -102,6 +101,24 @@ from IPython.display import display
 from google.api_core.exceptions import GoogleAPIError
 import logging
 import sys
+
+# Setup logging with a basic configuration to handle warning and above
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Create and configure a logger for BigQueryMagic
+logger = logging.getLogger('BigQueryMagic')
+logger.setLevel(logging.WARNING)  # Adjusting to WARNING as you preferred using print for INFO level messages
+logger.propagate = True
+
+# Add a StreamHandler for stdout to ensure visibility in Colab output cells
+stream_handler = logging.StreamHandler(sys.stdout)
+stream_handler.setLevel(logging.WARNING)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+stream_handler.setFormatter(formatter)
+
+# Clear existing handlers to avoid duplicate logging and add the newly created StreamHandler
+logger.handlers.clear()
+logger.addHandler(stream_handler)
 
 # Global configuration dictionary for BigQuery settings
 bigquery_config = {
@@ -125,12 +142,11 @@ def bigquery(line, cell):
     Executes a BigQuery query and optionally saves results to a pandas DataFrame or a file.
     """
     args = shlex.split(line)
-    dry_run = 'dry' in args
-    dataframe_var_name = None
-    output_file = None
     params = {}
+    output_file = None
+    dry_run = 'dry' in args
 
-    # Extract and remove known arguments
+    # Extract and process known arguments
     for arg in args:
         if '--source=' in arg:
             bigquery_config['source'] = arg.split('=')[1]
@@ -140,9 +156,7 @@ def bigquery(line, cell):
             params = json.loads(arg.split('=')[1])
         elif '--output_file=' in arg:
             output_file = arg.split('=')[1]
-        elif arg == 'dry':
-            dry_run = True
-        else:
+        elif arg != 'dry':
             dataframe_var_name = arg  # Assume it's the DataFrame variable name if not a dry run
     
     try:
@@ -155,7 +169,7 @@ def bigquery(line, cell):
         if dry_run:
             handle_dry_run(query_job)
         else:
-            handle_query_execution(query_job, dataframe_var_name, output_file)
+            handle_query_execution(query_job, locals().get('dataframe_var_name'), output_file)
     except GoogleAPIError as e:
         logger.error(f"GoogleAPIError: {str(e)}")
     except Exception as e:
@@ -163,7 +177,7 @@ def bigquery(line, cell):
 
 def handle_dry_run(query_job):
     """
-    Handles the printing of dry run information, including estimated bytes processed and cost.
+    Handles the logging of dry run information, including estimated bytes processed and cost.
     """
     bytes_processed = query_job.total_bytes_processed
     print(f"Dry run: Estimated bytes to be processed: {bytes_processed} bytes.")
@@ -173,8 +187,7 @@ def handle_dry_run(query_job):
 
 def handle_query_execution(query_job, dataframe_var_name, output_file):
     """
-    Handles the execution of the query, saving results to a DataFrame or a file as specified,
-    and outputs the process through print statements.
+    Handles the execution of the query, saving results to a DataFrame or a file as specified.
     """
     results = query_job.result()
     dataframe = results.to_dataframe()
@@ -190,7 +203,6 @@ def handle_query_execution(query_job, dataframe_var_name, output_file):
         print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
     else:
         display(dataframe)
-
 
 
 
