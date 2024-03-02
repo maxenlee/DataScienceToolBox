@@ -108,50 +108,71 @@ def configure_bigquery(source=None, project_id=None):
         bigquery_config['project_id'] = project_id
 
 
-
 @register_cell_magic
 def bigquery(line, cell):
-    args = shlex.split(line)  # Using shlex.split for safer argument parsing
+    """
+    Execute a BigQuery SQL query and optionally store the results in a pandas DataFrame.
+    
+    Usage:
+    %%bigquery [options] [dataframe_var_name]
+    <SQL query>
+    
+    Options:
+    - dry: Perform a dry run to estimate query costs.
+    - --source=<source>: Specify a dataset source to override the global configuration.
+    - --project_id=<project_id>: Specify a Google Cloud project ID to override the global configuration.
+    
+    Parameters:
+    - line (str): The options line where options include 'dry', 'dataframe_var_name',
+                  and flags for 'source' and 'project_id'.
+    - cell (str): The SQL query to be executed.
+    """
+    args = shlex.split(line)
     dry_run = 'dry' in args
     dataframe_var_name = None
-    
-    # Fetch project_id and source from the bigquery_config
-    project_id = bigquery_config.get('project_id')
-    source = bigquery_config.get('source')
-    
+    local_source = bigquery_config.get('source')
+    local_project_id = bigquery_config.get('project_id')
+
+    # Remove 'dry' from args if present
     if dry_run:
         args.remove('dry')
-    if args:
-        dataframe_var_name = args[0]  # Assuming the first argument is the DataFrame name if present
+    
+    # Process optional arguments
+    for arg in args:
+        if arg.startswith('--source='):
+            local_source = arg.split('=')[1]
+        elif arg.startswith('--project_id='):
+            local_project_id = arg.split('=')[1]
+        else:
+            dataframe_var_name = arg  # Assume any other arg is the DataFrame name
 
-    client = bq.Client(project=project_id)
-    job_config = bq.QueryJobConfig(dry_run=dry_run, use_query_cache=not dry_run)
-    
-    # Ensure the query uses the source defined in bigquery_config unless overridden
-    formatted_query = cell.format(source=source)
-    query_job = client.query(formatted_query, job_config=job_config)
-    
-    if dry_run:
-        bytes_processed = query_job.total_bytes_processed
-        print(f"Estimated bytes to be processed: {bytes_processed} bytes.")
-        cost_per_tb = 5  # Assume $5 per TB as the cost
-        estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
-        print(f"Estimated cost of the query: ${estimated_cost:.2f} USD")
-    else:
-        try:
-            results = query_job.result()
+    try:
+        client = bq.Client(project=local_project_id)
+        job_config = bq.QueryJobConfig(dry_run=dry_run, use_query_cache=not dry_run)
+        
+        # Format the query with the local source if provided
+        formatted_query = cell.format(source=local_source)
+        query_job = client.query(formatted_query, job_config=job_config)
+        
+        if dry_run:
+            bytes_processed = query_job.total_bytes_processed
+            print(f"Estimated bytes to be processed: {bytes_processed} bytes.")
+            cost_per_tb = 5  # Assume $5 per TB as the cost
+            estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
+            print(f"Estimated cost of the query: ${estimated_cost:.2f} USD")
+        else:
+            results = query_job.result()  # This line can raise exceptions
             dataframe = results.to_dataframe()
             if dataframe_var_name:
-                # Assign the results to a DataFrame with the specified name
                 ipython = get_ipython()
                 ipython.user_ns[dataframe_var_name] = dataframe
                 print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
             else:
-                # If no DataFrame name provided, directly display results
                 display(dataframe)
-        except Exception as e:
-            print(f"An error occurred: {e}")
-
+    except bq.exceptions.BadRequest as e:
+        print(f"Query execution failed: {e.message}")
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
 
 if __name__ == "__main__":
