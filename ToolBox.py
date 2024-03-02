@@ -1,3 +1,18 @@
+
+# Ensure that the BigQuery client is initialized
+client = bigquery.Client(project='your-project-id')
+from google.cloud import bigquery as bq
+from IPython.core.magic import register_cell_magic
+from IPython.display import display
+from google.cloud import bigquery
+import pandas as pd
+from google.cloud import bigquery as bq
+from IPython.core.magic import register_cell_magic
+from IPython.display import display
+import shlex  # For safely splitting the argument line
+
+
+
 import pandas as pd
 from google.cloud import bigquery
 
@@ -75,6 +90,7 @@ pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
 
 
 
+
 # ToolBox.py
 import json
 from google.cloud import bigquery as bq
@@ -92,12 +108,14 @@ import os
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('BigQueryMagic')
 
+
 bigquery_config = {
     'source': 'default-source',
     'project_id': 'default-project-id',
 }
 
 def configure_bigquery(source=None, project_id=None):
+
     global bigquery_config
     if source:
         bigquery_config['source'] = source
@@ -106,6 +124,7 @@ def configure_bigquery(source=None, project_id=None):
 
 @register_cell_magic
 def bigquery(line, cell):
+
     args = shlex.split(line)
     dry_run = 'dry' in args
     dataframe_var_name = None
@@ -185,8 +204,5 @@ if __name__ == "__main__":
     print('')
     # Code to execute when the module is run as a script
     # For example, test your run_query function here
-
-
-
 
 
