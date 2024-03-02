@@ -148,7 +148,7 @@ def bigquery(line, cell):
         query_job = client.query(formatted_query, job_config=job_config)
 
         if 'dry_run' in locals() and dry_run:
-            print('dry yes')
+            
             handle_dry_run(query_job)
         else:
             handle_query_execution(query_job, locals().get('dataframe_var_name'), output_file)
@@ -159,7 +159,8 @@ def bigquery(line, cell):
 
 def handle_dry_run(query_job):
     bytes_processed = query_job.total_bytes_processed
-    print(logger.info(f"Dry run: Estimated bytes to be processed: {bytes_processed} bytes."))
+    print("I'm DRY")
+    logger.info(f"Dry run: Estimated bytes to be processed: {bytes_processed} bytes.")
     cost_per_tb = 5  # Assume $5 per TB as the cost
     estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
     logger.info(f"Estimated cost of the query: ${estimated_cost:.2f}")
