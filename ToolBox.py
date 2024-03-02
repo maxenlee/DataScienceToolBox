@@ -88,22 +88,7 @@ class DataFrameAnalyzer:
 pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
 
 
-import json
 from google.cloud import bigquery as bq
-from IPython.core.display import display, JSON
-import pandas as pd
-import shlex
-from google.api_core.exceptions import GoogleAPIError
-import logging
-
-
-# Removed unused imports (ipywidgets, os)
-
-# Ensure that the BigQuery client is initialized (handled later)
-client = None  # Placeholder, will be initialized on first use
-
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger('BigQueryMagic')
 
 
 def get_bigquery_client():
@@ -125,8 +110,6 @@ def get_bigquery_client():
   if not project_id:
     raise ValueError("BIGQUERY_PROJECT_ID environment variable not set!")
   return bq.Client(project=project_id)
-
-
 
 
 @register_cell_magic
