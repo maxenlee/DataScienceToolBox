@@ -77,12 +77,15 @@ pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
 # ToolBox.py
 
 
+
+from IPython import get_ipython
 from google.cloud import bigquery as bq
 from IPython.core.magic import register_cell_magic
-from IPython import get_ipython
 from IPython.display import display
 import pandas as pd
 import shlex  # For safely splitting the argument line
+
+# Global configuration dictionary for BigQuery settings, assuming it's already defined as shown previously
 
 # Global configuration dictionary for BigQuery settings
 bigquery_config = {
@@ -105,14 +108,6 @@ def configure_bigquery(source=None, project_id=None):
         bigquery_config['project_id'] = project_id
 
 
-from IPython import get_ipython
-from google.cloud import bigquery as bq
-from IPython.core.magic import register_cell_magic
-from IPython.display import display
-import pandas as pd
-import shlex  # For safely splitting the argument line
-
-# Global configuration dictionary for BigQuery settings, assuming it's already defined as shown previously
 
 @register_cell_magic
 def bigquery(line, cell):
