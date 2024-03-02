@@ -1,5 +1,6 @@
 
-
+# # Ensure that the BigQuery client is initialized
+# client = bigquery.Client(project='your-project-id')
 # from google.cloud import bigquery as bq
 # from IPython.core.magic import register_cell_magic
 # from IPython.display import display
@@ -84,37 +85,40 @@
 #         return  pd.concat(analysis_results.values())
 
 
-# Import necessary libraries
-import logging
+# # Register the custom accessor on pandas DataFrame with the name "df_kit"
+# pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
+
+
+
+
+# ToolBox.py
+import json
+import os
+import pandas as pd
+import shlex
 from google.cloud import bigquery as bq
 from IPython.core.magic import register_cell_magic
 from IPython.display import display
-import pandas as pd
-import shlex
 from google.api_core.exceptions import GoogleAPIError
+import logging
 import sys
 
-# Setup logging
+# Setup logging with a basic configuration
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-# Create a logger
+# Create and configure a logger
 logger = logging.getLogger('BigQueryMagic')
+logger.setLevel(logging.INFO)  # Set logger to handle INFO and higher level logs
+logger.propagate = True  # Ensure logs propagate to the root logger
 
-# Explicitly set the logger level
-logger.setLevel(logging.INFO)
-
-# Ensure the logger propagates messages up to the root logger
-logger.propagate = True
-
-# If you want to ensure logging to stdout, add a StreamHandler explicitly
+# Add a StreamHandler for stdout to ensure visibility in Colab output cells
 stream_handler = logging.StreamHandler(sys.stdout)
-stream_handler.setLevel(logging.INFO)
+stream_handler.setLevel(logging.INFO)  # Ensure INFO and higher messages are handled
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 stream_handler.setFormatter(formatter)
-logger.addHandler(stream_handler)
 
-# Prevent duplicate logging messages
-logger.handlers = [h for h in logger.handlers if not isinstance(h, logging.StreamHandler)]
+# Clear existing handlers and add the newly created StreamHandler
+logger.handlers.clear()
 logger.addHandler(stream_handler)
 
 # Global configuration dictionary for BigQuery settings
@@ -125,7 +129,7 @@ bigquery_config = {
 
 def configure_bigquery(source=None, project_id=None):
     """
-    Updates the BigQuery configuration.
+    Configures global settings for BigQuery operations.
     """
     global bigquery_config
     if source:
@@ -136,74 +140,74 @@ def configure_bigquery(source=None, project_id=None):
 @register_cell_magic
 def bigquery(line, cell):
     """
-    Executes BigQuery SQL queries with optional parameters for enhanced functionalities.
+    Executes a BigQuery query and optionally saves results to a pandas DataFrame or a file.
     """
     args = shlex.split(line)
-    params = {}
+    dry_run = 'dry' in args
+    dataframe_var_name = None
     output_file = None
+    params = {}
 
-    # Extract and process known arguments
+    # Extract and remove known arguments
     for arg in args:
-        if arg.startswith('--source='):
+        if '--source=' in arg:
             bigquery_config['source'] = arg.split('=')[1]
-        elif arg.startswith('--project_id='):
+        elif '--project_id=' in arg:
             bigquery_config['project_id'] = arg.split('=')[1]
-        elif arg.startswith('--params='):
-            params_str = arg.split('=')[1]
-            params = json.loads(params_str)
-        elif arg.startswith('--output_file='):
+        elif '--params=' in arg:
+            params = json.loads(arg.split('=')[1])
+        elif '--output_file=' in arg:
             output_file = arg.split('=')[1]
         elif arg == 'dry':
             dry_run = True
         else:
-            dataframe_var_name = arg  # Assume it's the DataFrame variable name
-
+            dataframe_var_name = arg  # Assume it's the DataFrame variable name if not a dry run
+    
     try:
         client = bq.Client(project=bigquery_config['project_id'])
-        job_config = bq.QueryJobConfig(dry_run='dry_run' in locals(), use_query_cache=True, query_parameters=params)
+        job_config = bq.QueryJobConfig(dry_run=dry_run, use_query_cache=True, query_parameters=params)
         
         formatted_query = cell.format(source=bigquery_config['source'])
         query_job = client.query(formatted_query, job_config=job_config)
 
-        if 'dry_run' in locals() and dry_run:
-            
+        if dry_run:
             handle_dry_run(query_job)
         else:
-            handle_query_execution(query_job, locals().get('dataframe_var_name'), output_file)
+            handle_query_execution(query_job, dataframe_var_name, output_file)
     except GoogleAPIError as e:
         logger.error(f"GoogleAPIError: {str(e)}")
     except Exception as e:
         logger.exception("An unexpected error occurred")
 
 def handle_dry_run(query_job):
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logger.setLevel(logging.INFO)
-    
+    """
+    Handles the logging of dry run information, including estimated bytes processed and cost.
+    """
     bytes_processed = query_job.total_bytes_processed
-    print("I'm DRY")
     logger.info(f"Dry run: Estimated bytes to be processed: {bytes_processed} bytes.")
     cost_per_tb = 5  # Assume $5 per TB as the cost
     estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
     logger.info(f"Estimated cost of the query: ${estimated_cost:.2f}")
 
-
 def handle_query_execution(query_job, dataframe_var_name, output_file):
+    """
+    Handles the execution of the query, saving results to a DataFrame or a file as specified.
+    """
     results = query_job.result()
     dataframe = results.to_dataframe()
 
     if output_file:
         # Ensure the file is saved to /content if no directory is specified
-        if not os.path.dirname(output_file):
+        if not os.path.isabs(output_file):
             output_file = os.path.join('/content', output_file)
         dataframe.to_csv(output_file)
         logger.info(f"Query results stored in {output_file}")
     elif dataframe_var_name:
-        # Assign the results to a DataFrame variable in the user namespace
         get_ipython().user_ns[dataframe_var_name] = dataframe
         logger.info(f"Query results stored in DataFrame '{dataframe_var_name}'.")
     else:
-        # Display the results directly
         display(dataframe)
+
 
 
 
