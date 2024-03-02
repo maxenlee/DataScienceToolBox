@@ -185,7 +185,6 @@ def handle_query_execution(query_job, dataframe_var_name, output_file):
         display(dataframe)
 
 
-
 if __name__ == "__main__":
     print('')
     # Code to execute when the module is run as a script
