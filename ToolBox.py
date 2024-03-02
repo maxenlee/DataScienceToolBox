@@ -197,5 +197,3 @@ if __name__ == "__main__":
     # For example, test your run_query function here
 
 
-
-
