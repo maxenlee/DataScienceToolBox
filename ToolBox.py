@@ -80,6 +80,7 @@ pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
 from google.cloud import bigquery as bq
 from IPython.core.magic import register_cell_magic
 from IPython.display import display
+import pandas as pd
 import shlex  # For safely splitting the argument line
 
 # Global configuration dictionary for BigQuery settings
@@ -108,8 +109,17 @@ def bigquery(line, cell):
     source = bigquery_config.get('source')
     project_id = bigquery_config.get('project_id')
     
-    dry_run = 'dry' in line.split()
-    args_dict = {k: v for k, v in (arg.split('=') for arg in line.split() if '=' in arg)}
+    # Parse the line for arguments
+    args = shlex.split(line)
+    dry_run = 'dry' in args
+    if dry_run:
+        args.remove('dry')
+    
+    # The DataFrame variable name could be provided after 'dry' or as the first argument
+    dataframe_var_name = args[0] if args else None
+    
+    # Parse for potential keyword arguments
+    args_dict = {k: v for k, v in (arg.split('=') for arg in args if '=' in arg)}
     
     # Optionally override source and project_id if provided in the magic command line
     source = args_dict.get('source', source)
@@ -128,14 +138,25 @@ def bigquery(line, cell):
         cost_per_tb = 5  # Update this based on the current rate as necessary
         estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
         print(f"Estimated cost of the query: ${estimated_cost:.2f} USD")
+        
+        if dataframe_var_name:
+            # Create an empty DataFrame for structural purposes during dry runs
+            globals()[dataframe_var_name] = pd.DataFrame()
+            print(f"Empty DataFrame '{dataframe_var_name}' created for dry run.")
     else:
         try:
             results = query_job.result()
-            display(results.to_dataframe())
+            dataframe = results.to_dataframe()
+            if dataframe_var_name:
+                # Assign the results to a DataFrame with the specified name
+                globals()[dataframe_var_name] = dataframe
+                print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
+            else:
+                # Display results if no DataFrame name is provided
+                display(dataframe)
         except Exception as e:
             print(f"An error occurred: {e}")
 
-# Additional ToolBox classes and functions as needed...
 
 
 
