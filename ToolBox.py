@@ -1,6 +1,7 @@
 import pandas as pd
 from google.cloud import bigquery
 
+
 class DataFrameAnalyzer:
     """
     A custom DataFrame analyzer accessor for pandas DataFrames.
@@ -84,7 +85,17 @@ from IPython.core.magic import register_cell_magic
 from IPython.display import display
 import pandas as pd
 import shlex  # For safely splitting the argument line
+from google.api_core.exceptions import GoogleAPIError, BadRequest, Forbidden, NotFound, Conflict, InternalServerError, ServiceUnavailable
+import logging
 
+# Configure logging at the root level of the logger hierarchy
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+
+# Create a logger for your BigQuery cell magic
+logger = logging.getLogger('BigQueryMagic')
+
+
+@register_cell_magic
 # Global configuration dictionary for BigQuery settings, assuming it's already defined as shown previously
 
 # Global configuration dictionary for BigQuery settings
@@ -169,10 +180,13 @@ def bigquery(line, cell):
                 print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
             else:
                 display(dataframe)
-    except bq.exceptions.BadRequest as e:
-        print(f"Query execution failed: {e.message}")
+    except BadRequest as e:
+        logger.error(f"BadRequest (400): {e.message} - Check your SQL syntax.")
+    except Forbidden as e:
+        logger.error(f"Forbidden (403): {e.message} - You might not have the necessary permissions for the resource.")
+    # ... handle other exceptions similarly ...
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logger.error(f"An unexpected error occurred: {e}")
 
 
 if __name__ == "__main__":
