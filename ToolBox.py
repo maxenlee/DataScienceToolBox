@@ -79,6 +79,7 @@ pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
 
 from google.cloud import bigquery as bq
 from IPython.core.magic import register_cell_magic
+from IPython import get_ipython
 from IPython.display import display
 import pandas as pd
 import shlex  # For safely splitting the argument line
@@ -152,13 +153,55 @@ def bigquery(line, cell):
                 globals()[dataframe_var_name] = dataframe
                 print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
             else:
-                # Display results if no DataFrame name is provided
-                display(dataframe)
+               
         except Exception as e:
             print(f"An error occurred: {e}")
 
 
 
+
+
+
+@register_cell_magic
+def bigquery(line, cell):
+    args = line.split()
+    dry_run = 'dry' in args
+    dataframe_var_name = None
+    
+    # Assuming project_id and source are defined globally or fetched from configuration
+    global project_id, source
+    
+    if dry_run:
+        args.remove('dry')
+    if args:
+        dataframe_var_name = args[0]  # Assuming the first argument is the DataFrame name if present
+
+    client = bq.Client(project=project_id)
+    job_config = bq.QueryJobConfig(dry_run=dry_run, use_query_cache=not dry_run)
+    
+    formatted_query = cell.format(source=source)
+    query_job = client.query(formatted_query, job_config=job_config)
+    
+    if dry_run:
+        bytes_processed = query_job.total_bytes_processed
+        print(f"Estimated bytes to be processed: {bytes_processed} bytes.")
+        cost_per_tb = 5  # Assume $5 per TB as the cost
+        estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
+        print(f"Estimated cost of the query: ${estimated_cost:.2f} USD")
+    else:
+        try:
+            results = query_job.result()
+            dataframe = results.to_dataframe()
+            if dataframe_var_name:
+                # Assign the results to a DataFrame with the specified name
+                ipython = get_ipython()
+                ipython.user_ns[dataframe_var_name] = dataframe
+                print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
+            else:
+                # If no DataFrame name provided, display results
+                display(dataframe)
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     print('')
