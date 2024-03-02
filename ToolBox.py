@@ -87,9 +87,21 @@ import logging
 from ipywidgets import widgets
 
 # Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('BigQueryMagic')
+logger.propagate = True  # Ensure logs propagate to the root logger
 
+# Add a StreamHandler for stdout to ensure visibility in Colab output cells
+stream_handler = logging.StreamHandler(sys.stdout)
+stream_handler.setLevel(logging.INFO)  # Ensure INFO and higher messages are handled
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+stream_handler.setFormatter(formatter)
+
+# Clear existing handlers and add the newly created StreamHandler
+logger.handlers.clear()
+logger.addHandler(stream_handler)
+
+# Global configuration dictionary for BigQuery settings
 bigquery_config = {
     'source': 'default-source',
     'project_id': 'default-project-id',
@@ -155,23 +167,26 @@ def process_known_args(arg):
 
 def handle_dry_run(query_job):
     bytes_processed = query_job.total_bytes_processed
-    logger.info(f"Estimated bytes to be processed: {bytes_processed} bytes. The query syntax is correct.")
+    print(f"Dry run: Estimated bytes to be processed: {bytes_processed} bytes.")  # Using print for INFO level message
     cost_per_tb = 5  # Assume $5 per TB as the cost
     estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
-    logger.info(f"Estimated cost of the query: ${estimated_cost:.2f} USD. Consider optimizing your query if this cost seems high.")
+    print(f"Estimated cost of the query: ${estimated_cost:.2f}")  # Using print for INFO level message
 
 def handle_query_execution(query_job, dataframe_var_name, output_file):
     results = query_job.result()
+    dataframe = results.to_dataframe()
+
     if output_file:
-        results.to_dataframe().to_csv(output_file)
-        logger.info(f"Query results stored in {output_file}")
+        if not os.path.isabs(output_file):
+            output_file = os.path.join('/content', output_file)
+        dataframe.to_csv(output_file)
+        print(f"Query results stored in {output_file}")  # Using print for INFO level message
     elif dataframe_var_name:
-        dataframe = results.to_dataframe()
-        ipython = get_ipython()
-        ipython.user_ns[dataframe_var_name] = dataframe
-        logger.info(f"Query results stored in DataFrame '{dataframe_var_name}'.")
+        get_ipython().user_ns[dataframe_var_name] = dataframe
+        print(f"Query results stored in DataFrame '{dataframe_var_name}'.")  # Using print for INFO level message
     else:
-        display(results.to_dataframe())
+        display(dataframe)
+
 
 
 if __name__ == "__main__":
