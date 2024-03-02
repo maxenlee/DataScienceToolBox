@@ -153,9 +153,10 @@ def bigquery(line, cell):
                 globals()[dataframe_var_name] = dataframe
                 print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
             else:
-               
-        except Exception as e:
-            print(f"An error occurred: {e}")
+                except Exception as e:
+                    print(f"An error occurred: {e}")
+                
+            
 
 
 
