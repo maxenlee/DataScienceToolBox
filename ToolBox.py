@@ -73,7 +73,6 @@ class DataFrameAnalyzer:
 # Register the custom accessor on pandas DataFrame with the name "df_kit"
 pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
 
-
 # Import necessary libraries
 import json
 import os
@@ -187,6 +186,7 @@ def handle_query_execution(query_job, dataframe_var_name, output_file):
         print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
     else:
         display(dataframe)
+
 
 
 
