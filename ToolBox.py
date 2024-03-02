@@ -103,24 +103,6 @@ from google.api_core.exceptions import GoogleAPIError
 import logging
 import sys
 
-# Setup logging with a basic configuration
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-# Create and configure a logger
-logger = logging.getLogger('BigQueryMagic')
-logger.setLevel(logging.INFO)  # Set logger to handle INFO and higher level logs
-logger.propagate = True  # Ensure logs propagate to the root logger
-
-# Add a StreamHandler for stdout to ensure visibility in Colab output cells
-stream_handler = logging.StreamHandler(sys.stdout)
-stream_handler.setLevel(logging.INFO)  # Ensure INFO and higher messages are handled
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-stream_handler.setFormatter(formatter)
-
-# Clear existing handlers and add the newly created StreamHandler
-logger.handlers.clear()
-logger.addHandler(stream_handler)
-
 # Global configuration dictionary for BigQuery settings
 bigquery_config = {
     'source': 'default-source',
@@ -181,17 +163,18 @@ def bigquery(line, cell):
 
 def handle_dry_run(query_job):
     """
-    Handles the logging of dry run information, including estimated bytes processed and cost.
+    Handles the printing of dry run information, including estimated bytes processed and cost.
     """
     bytes_processed = query_job.total_bytes_processed
-    logger.info(f"Dry run: Estimated bytes to be processed: {bytes_processed} bytes.")
+    print(f"Dry run: Estimated bytes to be processed: {bytes_processed} bytes.")
     cost_per_tb = 5  # Assume $5 per TB as the cost
     estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
-    logger.info(f"Estimated cost of the query: ${estimated_cost:.2f}")
+    print(f"Estimated cost of the query: ${estimated_cost:.2f}")
 
 def handle_query_execution(query_job, dataframe_var_name, output_file):
     """
-    Handles the execution of the query, saving results to a DataFrame or a file as specified.
+    Handles the execution of the query, saving results to a DataFrame or a file as specified,
+    and outputs the process through print statements.
     """
     results = query_job.result()
     dataframe = results.to_dataframe()
@@ -201,12 +184,13 @@ def handle_query_execution(query_job, dataframe_var_name, output_file):
         if not os.path.isabs(output_file):
             output_file = os.path.join('/content', output_file)
         dataframe.to_csv(output_file)
-        logger.info(f"Query results stored in {output_file}")
+        print(f"Query results stored in {output_file}")
     elif dataframe_var_name:
         get_ipython().user_ns[dataframe_var_name] = dataframe
-        logger.info(f"Query results stored in DataFrame '{dataframe_var_name}'.")
+        print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
     else:
         display(dataframe)
+
 
 
 
