@@ -89,11 +89,21 @@ pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
 
 
 from google.cloud import bigquery as bq
+from IPython.core.magic import register_cell_magic
+from IPython.display import display
+import shlex
+import json
+import logging  # Added for logging
+
+logger = logging.getLogger(__name__)  # Initialize logger
 
 
 def get_bigquery_client():
   """
   Retrieves a BigQuery client using the project ID from environment variables (using Colab-compatible approach).
+
+  Raises:
+      ValueError: If the BIGQUERY_PROJECT_ID environment variable is not set.
   """
   try:
     # Attempt to get project ID from the environment using a generic approach
@@ -126,7 +136,7 @@ def bigquery(line, cell):
   dataframe_var_name = None
   output_file = None
   params = {}
-  
+
   # Extract and remove known arguments
   args = [arg for arg in args if not process_known_args(arg)]
 
@@ -134,13 +144,14 @@ def bigquery(line, cell):
   if args:
     if not dry_run:  # Assume first arg is the DataFrame name if not a dry run
       dataframe_var_name = args[0]
-  
+
   try:
     job_config = bq.QueryJobConfig(dry_run=dry_run, use_query_cache=not dry_run, query_parameters=params)
-        
-    formatted_query = cell.format()  # No source needed with environment variables
+
+    # No source needed with environment variables
+    formatted_query = cell.format()  
     query_job = client.query(formatted_query, job_config=job_config)
-        
+
     if dry_run:
       handle_dry_run(query_job)
     else:
@@ -149,6 +160,7 @@ def bigquery(line, cell):
     logger.error(f"GoogleAPIError: {str(e)}")
   except Exception as e:
     logger.exception("An unexpected error occurred")
+
 
 def process_known_args(arg):
   global params, output_file
@@ -163,9 +175,16 @@ def process_known_args(arg):
     return True
   return False
 
+
+def handle_dry_run(query_job):
+  """Handles a dry run query by logging the estimated bytes processed."""
+  logger.info(f"Estimated bytes processed: {query_job.estimated_query_size}")
+
+
 def handle_query_execution(query_job, dataframe_var_name, output_file):
+  """Handles query execution and result storage."""
   results = query_job.result()
-  
+
   if output_file:
     results.to_dataframe().to_csv(output_file)
     logger.info(f"Query results stored in {output_file}")
@@ -176,7 +195,6 @@ def handle_query_execution(query_job, dataframe_var_name, output_file):
     logger.info(f"Query results stored in DataFrame '{dataframe_var_name}'.")
   else:
     display(results.to_dataframe())
-
 
 if __name__ == "__main__":
     print('')
