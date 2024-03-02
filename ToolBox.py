@@ -85,19 +85,37 @@
 
 
 # Import necessary libraries
-import json
-import os
-import pandas as pd
-import shlex
+import logging
 from google.cloud import bigquery as bq
 from IPython.core.magic import register_cell_magic
 from IPython.display import display
+import pandas as pd
+import shlex
 from google.api_core.exceptions import GoogleAPIError
-import logging
+import sys
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# Create a logger
 logger = logging.getLogger('BigQueryMagic')
+
+# Explicitly set the logger level
+logger.setLevel(logging.INFO)
+
+# Ensure the logger propagates messages up to the root logger
+logger.propagate = True
+
+# If you want to ensure logging to stdout, add a StreamHandler explicitly
+stream_handler = logging.StreamHandler(sys.stdout)
+stream_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+stream_handler.setFormatter(formatter)
+logger.addHandler(stream_handler)
+
+# Prevent duplicate logging messages
+logger.handlers = [h for h in logger.handlers if not isinstance(h, logging.StreamHandler)]
+logger.addHandler(stream_handler)
 
 # Global configuration dictionary for BigQuery settings
 bigquery_config = {
