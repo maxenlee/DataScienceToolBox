@@ -158,12 +158,16 @@ def bigquery(line, cell):
         logger.exception("An unexpected error occurred")
 
 def handle_dry_run(query_job):
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger.setLevel(logging.INFO)
+    
     bytes_processed = query_job.total_bytes_processed
     print("I'm DRY")
     logger.info(f"Dry run: Estimated bytes to be processed: {bytes_processed} bytes.")
     cost_per_tb = 5  # Assume $5 per TB as the cost
     estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
     logger.info(f"Estimated cost of the query: ${estimated_cost:.2f}")
+
 
 def handle_query_execution(query_job, dataframe_var_name, output_file):
     results = query_job.result()
