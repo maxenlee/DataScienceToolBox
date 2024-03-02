@@ -104,62 +104,6 @@ def configure_bigquery(source=None, project_id=None):
     if project_id:
         bigquery_config['project_id'] = project_id
 
-@register_cell_magic
-def bigquery(line, cell):
-    # Use the global configuration for source and project_id
-    source = bigquery_config.get('source')
-    project_id = bigquery_config.get('project_id')
-    
-    # Parse the line for arguments
-    args = shlex.split(line)
-    dry_run = 'dry' in args
-    if dry_run:
-        args.remove('dry')
-    
-    # The DataFrame variable name could be provided after 'dry' or as the first argument
-    dataframe_var_name = args[0] if args else None
-    
-    # Parse for potential keyword arguments
-    args_dict = {k: v for k, v in (arg.split('=') for arg in args if '=' in arg)}
-    
-    # Optionally override source and project_id if provided in the magic command line
-    source = args_dict.get('source', source)
-    project_id = args_dict.get('project_id', project_id)
-    
-    client = bq.Client(project=project_id)
-    job_config = bq.QueryJobConfig(dry_run=dry_run, use_query_cache=not dry_run)
-    
-    # Apply formatting with the configured source
-    formatted_query = cell.format(source=source)
-    query_job = client.query(formatted_query, job_config=job_config)
-    
-    if dry_run:
-        bytes_processed = query_job.total_bytes_processed
-        print(f"Estimated bytes to be processed: {bytes_processed} bytes.")
-        cost_per_tb = 5  # Update this based on the current rate as necessary
-        estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
-        print(f"Estimated cost of the query: ${estimated_cost:.2f} USD")
-        
-        if dataframe_var_name:
-            # Create an empty DataFrame for structural purposes during dry runs
-            globals()[dataframe_var_name] = pd.DataFrame()
-            print(f"Empty DataFrame '{dataframe_var_name}' created for dry run.")
-    else:
-        try:
-            results = query_job.result()
-            dataframe = results.to_dataframe()
-            if dataframe_var_name:
-                # Assign the results to a DataFrame with the specified name
-                globals()[dataframe_var_name] = dataframe
-                print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
-            else:
-                except Exception as e:
-                    print(f"An error occurred: {e}")
-                
-            
-
-
-
 
 
 
