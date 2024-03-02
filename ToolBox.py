@@ -93,10 +93,6 @@ from IPython.core.magic import register_cell_magic
 from IPython.display import display
 import shlex
 import json
-import logging  # Added for logging
-
-logger = logging.getLogger(__name__)  # Initialize logger
-
 
 def get_bigquery_client():
   """
@@ -125,11 +121,8 @@ def get_bigquery_client():
 @register_cell_magic
 def bigquery(line, cell):
 
-  global client  # Access the global client variable
-
   # Ensure client is initialized
-  if not client:
-    client = get_bigquery_client()
+  client = get_bigquery_client()
 
   args = shlex.split(line)
   dry_run = 'dry' in args
@@ -147,19 +140,18 @@ def bigquery(line, cell):
 
   try:
     job_config = bq.QueryJobConfig(dry_run=dry_run, use_query_cache=not dry_run, query_parameters=params)
-
-    # No source needed with environment variables
-    formatted_query = cell.format()  
+        
+    formatted_query = cell.format()  # No source needed with environment variables
     query_job = client.query(formatted_query, job_config=job_config)
-
+        
     if dry_run:
       handle_dry_run(query_job)
     else:
       handle_query_execution(query_job, dataframe_var_name, output_file)
   except GoogleAPIError as e:
-    logger.error(f"GoogleAPIError: {str(e)}")
+    print(f"GoogleAPIError: {str(e)}")
   except Exception as e:
-    logger.exception("An unexpected error occurred")
+    print("An unexpected error occurred")
 
 
 def process_known_args(arg):
@@ -175,10 +167,9 @@ def process_known_args(arg):
     return True
   return False
 
-
 def handle_dry_run(query_job):
   """Handles a dry run query by logging the estimated bytes processed."""
-  logger.info(f"Estimated bytes processed: {query_job.estimated_query_size}")
+  print(f"Estimated bytes processed: {query_job.estimated_query_size}")
 
 
 def handle_query_execution(query_job, dataframe_var_name, output_file):
@@ -187,14 +178,15 @@ def handle_query_execution(query_job, dataframe_var_name, output_file):
 
   if output_file:
     results.to_dataframe().to_csv(output_file)
-    logger.info(f"Query results stored in {output_file}")
+    print(f"Query results stored in {output_file}")
   elif dataframe_var_name:
     dataframe = results.to_dataframe()
     ipython = get_ipython()
     ipython.user_ns[dataframe_var_name] = dataframe
-    logger.info(f"Query results stored in DataFrame '{dataframe_var_name}'.")
+    print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
   else:
     display(results.to_dataframe())
+
 
 if __name__ == "__main__":
     print('')
