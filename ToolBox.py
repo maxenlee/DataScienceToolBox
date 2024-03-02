@@ -108,18 +108,22 @@ logger = logging.getLogger('BigQueryMagic')
 
 def get_bigquery_client():
   """
-  Retrieves a BigQuery client using the project ID from environment variables (using get_ipython()).
+  Retrieves a BigQuery client using the project ID from environment variables (using get_ipython().kernel).
   """
   try:
-    # Attempt to get project ID from Colab environment
-    ipython = get_ipython()
-    project_id = ipython.get_variable("BIGQUERY_PROJECT_ID", None)
-  except NameError:
+    # Attempt to get project ID from Colab environment using kernel
+    kernel = get_ipython().kernel
+    if hasattr(kernel, 'get_variable'):
+      project_id = kernel.get_variable("BIGQUERY_PROJECT_ID", None)
+    else:
+      raise AttributeError("'get_variable' not found on kernel object")
+  except (AttributeError, NameError):
     # Fallback to potentially existing os module (for compatibility with other environments)
     project_id = os.environ.get("BIGQUERY_PROJECT_ID")
   if not project_id:
     raise ValueError("BIGQUERY_PROJECT_ID environment variable not set!")
   return bq.Client(project=project_id)
+
 
 
 @register_cell_magic
