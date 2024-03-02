@@ -78,7 +78,6 @@ pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
 # ToolBox.py
 
 
-
 from IPython import get_ipython
 from google.cloud import bigquery as bq
 from IPython.core.magic import register_cell_magic
@@ -88,15 +87,9 @@ import shlex  # For safely splitting the argument line
 from google.api_core.exceptions import GoogleAPIError, BadRequest, Forbidden, NotFound, Conflict, InternalServerError, ServiceUnavailable
 import logging
 
-# Configure logging at the root level of the logger hierarchy
-logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
-
-# Create a logger for your BigQuery cell magic
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('BigQueryMagic')
-
-
-@register_cell_magic
-# Global configuration dictionary for BigQuery settings, assuming it's already defined as shown previously
 
 # Global configuration dictionary for BigQuery settings
 bigquery_config = {
@@ -117,7 +110,6 @@ def configure_bigquery(source=None, project_id=None):
         bigquery_config['source'] = source
     if project_id:
         bigquery_config['project_id'] = project_id
-
 
 @register_cell_magic
 def bigquery(line, cell):
@@ -144,49 +136,56 @@ def bigquery(line, cell):
     local_source = bigquery_config.get('source')
     local_project_id = bigquery_config.get('project_id')
 
-    # Remove 'dry' from args if present
+    # Process optional arguments
     if dry_run:
         args.remove('dry')
-    
-    # Process optional arguments
     for arg in args:
         if arg.startswith('--source='):
             local_source = arg.split('=')[1]
         elif arg.startswith('--project_id='):
             local_project_id = arg.split('=')[1]
         else:
-            dataframe_var_name = arg  # Assume any other arg is the DataFrame name
+            dataframe_var_name = arg
 
     try:
         client = bq.Client(project=local_project_id)
         job_config = bq.QueryJobConfig(dry_run=dry_run, use_query_cache=not dry_run)
         
-        # Format the query with the local source if provided
         formatted_query = cell.format(source=local_source)
         query_job = client.query(formatted_query, job_config=job_config)
         
         if dry_run:
             bytes_processed = query_job.total_bytes_processed
-            print(f"Estimated bytes to be processed: {bytes_processed} bytes.")
+            logger.info(f"Estimated bytes to be processed: {bytes_processed} bytes.")
             cost_per_tb = 5  # Assume $5 per TB as the cost
             estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
-            print(f"Estimated cost of the query: ${estimated_cost:.2f} USD")
+            logger.info(f"Estimated cost of the query: ${estimated_cost:.2f} USD")
         else:
-            results = query_job.result()  # This line can raise exceptions
+            results = query_job.result()
             dataframe = results.to_dataframe()
             if dataframe_var_name:
                 ipython = get_ipython()
                 ipython.user_ns[dataframe_var_name] = dataframe
-                print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
+                logger.info(f"Query results stored in DataFrame '{dataframe_var_name}'.")
             else:
                 display(dataframe)
-    except BadRequest as e:
-        logger.error(f"BadRequest (400): {e.message} - Check your SQL syntax.")
-    except Forbidden as e:
-        logger.error(f"Forbidden (403): {e.message} - You might not have the necessary permissions for the resource.")
-    # ... handle other exceptions similarly ...
+    except GoogleAPIError as e:
+        if isinstance(e, BadRequest):
+            logger.error(f"BadRequest (400): {str(e)} - Check your SQL syntax.")
+        elif isinstance(e, Forbidden):
+            logger.error(f"Forbidden (403): {str(e)} - You might not have the necessary permissions for the resource.")
+        elif isinstance(e, NotFound):
+            logger.error(f"NotFound (404): {str(e)} - The specified resource was not found.")
+        elif isinstance(e, Conflict):
+            logger.error(f"Conflict (409): {str(e)} - A conflict occurred with the existing resource.")
+        elif isinstance(e, InternalServerError):
+            logger.error(f"InternalServerError (500): {str(e)} - BigQuery encountered an internal error.")
+        elif isinstance(e, ServiceUnavailable):
+            logger.error(f"ServiceUnavailable (503): {str(e)} - BigQuery service is temporarily unavailable. Try again later.")
+        else:
+            logger.error(f"GoogleAPIError: {str(e)} - An API error occurred.")
     except Exception as e:
-        logger.error(f"An unexpected error occurred: {e}")
+        logger.exception("An unexpected error occurred")
 
 
 if __name__ == "__main__":
