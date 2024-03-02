@@ -1,6 +1,5 @@
 
-# Ensure that the BigQuery client is initialized
-client = bigquery.Client(project='your-project-id')
+
 from google.cloud import bigquery as bq
 from IPython.core.magic import register_cell_magic
 from IPython.display import display
@@ -103,8 +102,9 @@ import logging
 from ipywidgets import widgets
 import os
 
+# Ensure that the BigQuery client is initialized
+client = bigquery.Client(project='your-project-id')# Setup logging
 
-# Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('BigQueryMagic')
 
