@@ -105,16 +105,24 @@ def configure_bigquery(source=None, project_id=None):
         bigquery_config['project_id'] = project_id
 
 
+from IPython import get_ipython
+from google.cloud import bigquery as bq
+from IPython.core.magic import register_cell_magic
+from IPython.display import display
+import pandas as pd
+import shlex  # For safely splitting the argument line
 
+# Global configuration dictionary for BigQuery settings, assuming it's already defined as shown previously
 
 @register_cell_magic
 def bigquery(line, cell):
-    args = line.split()
+    args = shlex.split(line)  # Using shlex.split for safer argument parsing
     dry_run = 'dry' in args
     dataframe_var_name = None
     
-    # Assuming project_id and source are defined globally or fetched from configuration
-    global project_id, source
+    # Fetch project_id and source from the bigquery_config
+    project_id = bigquery_config.get('project_id')
+    source = bigquery_config.get('source')
     
     if dry_run:
         args.remove('dry')
@@ -124,6 +132,7 @@ def bigquery(line, cell):
     client = bq.Client(project=project_id)
     job_config = bq.QueryJobConfig(dry_run=dry_run, use_query_cache=not dry_run)
     
+    # Ensure the query uses the source defined in bigquery_config unless overridden
     formatted_query = cell.format(source=source)
     query_job = client.query(formatted_query, job_config=job_config)
     
@@ -143,10 +152,12 @@ def bigquery(line, cell):
                 ipython.user_ns[dataframe_var_name] = dataframe
                 print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
             else:
-                # If no DataFrame name provided, display results
+                # If no DataFrame name provided, directly display results
                 display(dataframe)
         except Exception as e:
             print(f"An error occurred: {e}")
+
+
 
 if __name__ == "__main__":
     print('')
