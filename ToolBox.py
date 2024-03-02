@@ -148,6 +148,7 @@ def bigquery(line, cell):
         query_job = client.query(formatted_query, job_config=job_config)
 
         if 'dry_run' in locals() and dry_run:
+            print('dry yes')
             handle_dry_run(query_job)
         else:
             handle_query_execution(query_job, locals().get('dataframe_var_name'), output_file)
