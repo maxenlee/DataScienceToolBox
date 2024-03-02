@@ -150,7 +150,7 @@ def bigquery(line, cell):
         formatted_query = cell.format(source=bigquery_config['source'])
         query_job = client.query(formatted_query, job_config=job_config)
 
-        if dry_run:
+        if 'dry_run' in locals() and dry_run::
             handle_dry_run(query_job)
         else:
             handle_query_execution(query_job, locals().get('dataframe_var_name'), output_file)
