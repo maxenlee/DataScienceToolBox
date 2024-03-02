@@ -76,35 +76,26 @@ pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
 
 
 # ToolBox.py
-
-
-from IPython import get_ipython
+import json
 from google.cloud import bigquery as bq
 from IPython.core.magic import register_cell_magic
-from IPython.display import display
+from IPython.display import display, JSON
 import pandas as pd
-import shlex  # For safely splitting the argument line
-from google.api_core.exceptions import GoogleAPIError, BadRequest, Forbidden, NotFound, Conflict, InternalServerError, ServiceUnavailable
+import shlex
+from google.api_core.exceptions import GoogleAPIError
 import logging
+from ipywidgets import widgets
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('BigQueryMagic')
 
-# Global configuration dictionary for BigQuery settings
 bigquery_config = {
     'source': 'default-source',
     'project_id': 'default-project-id',
 }
 
 def configure_bigquery(source=None, project_id=None):
-    """
-    Update the BigQuery configuration.
-    
-    Parameters:
-    - source (str): The default dataset source to use in queries.
-    - project_id (str): The Google Cloud project ID for billing and access.
-    """
     global bigquery_config
     if source:
         bigquery_config['source'] = source
@@ -113,79 +104,74 @@ def configure_bigquery(source=None, project_id=None):
 
 @register_cell_magic
 def bigquery(line, cell):
-    """
-    Execute a BigQuery SQL query and optionally store the results in a pandas DataFrame.
-    
-    Usage:
-    %%bigquery [options] [dataframe_var_name]
-    <SQL query>
-    
-    Options:
-    - dry: Perform a dry run to estimate query costs.
-    - --source=<source>: Specify a dataset source to override the global configuration.
-    - --project_id=<project_id>: Specify a Google Cloud project ID to override the global configuration.
-    
-    Parameters:
-    - line (str): The options line where options include 'dry', 'dataframe_var_name',
-                  and flags for 'source' and 'project_id'.
-    - cell (str): The SQL query to be executed.
-    """
     args = shlex.split(line)
     dry_run = 'dry' in args
     dataframe_var_name = None
-    local_source = bigquery_config.get('source')
-    local_project_id = bigquery_config.get('project_id')
+    output_file = None
+    params = {}
+    
+    # Extract and remove known arguments
+    args = [arg for arg in args if not process_known_args(arg)]
 
-    # Process optional arguments
-    if dry_run:
-        args.remove('dry')
-    for arg in args:
-        if arg.startswith('--source='):
-            local_source = arg.split('=')[1]
-        elif arg.startswith('--project_id='):
-            local_project_id = arg.split('=')[1]
-        else:
-            dataframe_var_name = arg
-
+    # Remaining args processing
+    if args:
+        if not dry_run:  # Assume first arg is the DataFrame name if not a dry run
+            dataframe_var_name = args[0]
+    
     try:
-        client = bq.Client(project=local_project_id)
-        job_config = bq.QueryJobConfig(dry_run=dry_run, use_query_cache=not dry_run)
+        client = bq.Client(project=bigquery_config['project_id'])
+        job_config = bq.QueryJobConfig(dry_run=dry_run, use_query_cache=not dry_run, query_parameters=params)
         
-        formatted_query = cell.format(source=local_source)
+        formatted_query = cell.format(source=bigquery_config['source'])
         query_job = client.query(formatted_query, job_config=job_config)
         
         if dry_run:
-            bytes_processed = query_job.total_bytes_processed
-            logger.info(f"Estimated bytes to be processed: {bytes_processed} bytes.")
-            cost_per_tb = 5  # Assume $5 per TB as the cost
-            estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
-            logger.info(f"Estimated cost of the query: ${estimated_cost:.2f} USD")
+            handle_dry_run(query_job)
         else:
-            results = query_job.result()
-            dataframe = results.to_dataframe()
-            if dataframe_var_name:
-                ipython = get_ipython()
-                ipython.user_ns[dataframe_var_name] = dataframe
-                logger.info(f"Query results stored in DataFrame '{dataframe_var_name}'.")
-            else:
-                display(dataframe)
+            handle_query_execution(query_job, dataframe_var_name, output_file)
     except GoogleAPIError as e:
-        if isinstance(e, BadRequest):
-            logger.error(f"BadRequest (400): {str(e)} - Check your SQL syntax.")
-        elif isinstance(e, Forbidden):
-            logger.error(f"Forbidden (403): {str(e)} - You might not have the necessary permissions for the resource.")
-        elif isinstance(e, NotFound):
-            logger.error(f"NotFound (404): {str(e)} - The specified resource was not found.")
-        elif isinstance(e, Conflict):
-            logger.error(f"Conflict (409): {str(e)} - A conflict occurred with the existing resource.")
-        elif isinstance(e, InternalServerError):
-            logger.error(f"InternalServerError (500): {str(e)} - BigQuery encountered an internal error.")
-        elif isinstance(e, ServiceUnavailable):
-            logger.error(f"ServiceUnavailable (503): {str(e)} - BigQuery service is temporarily unavailable. Try again later.")
-        else:
-            logger.error(f"GoogleAPIError: {str(e)} - An API error occurred.")
+        logger.error(f"GoogleAPIError: {str(e)}")
     except Exception as e:
         logger.exception("An unexpected error occurred")
+
+def process_known_args(arg):
+    global params, output_file
+    if arg.startswith('--source='):
+        bigquery_config['source'] = arg.split('=')[1]
+        return True
+    elif arg.startswith('--project_id='):
+        bigquery_config['project_id'] = arg.split('=')[1]
+        return True
+    elif arg.startswith('--params='):
+        params_str = arg.split('=')[1]
+        params = json.loads(params_str)
+        return True
+    elif arg.startswith('--output_file='):
+        output_file = arg.split('=')[1]
+        return True
+    elif arg == 'dry':
+        return True
+    return False
+
+def handle_dry_run(query_job):
+    bytes_processed = query_job.total_bytes_processed
+    logger.info(f"Estimated bytes to be processed: {bytes_processed} bytes. The query syntax is correct.")
+    cost_per_tb = 5  # Assume $5 per TB as the cost
+    estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
+    logger.info(f"Estimated cost of the query: ${estimated_cost:.2f} USD. Consider optimizing your query if this cost seems high.")
+
+def handle_query_execution(query_job, dataframe_var_name, output_file):
+    results = query_job.result()
+    if output_file:
+        results.to_dataframe().to_csv(output_file)
+        logger.info(f"Query results stored in {output_file}")
+    elif dataframe_var_name:
+        dataframe = results.to_dataframe()
+        ipython = get_ipython()
+        ipython.user_ns[dataframe_var_name] = dataframe
+        logger.info(f"Query results stored in DataFrame '{dataframe_var_name}'.")
+    else:
+        display(results.to_dataframe())
 
 
 if __name__ == "__main__":
