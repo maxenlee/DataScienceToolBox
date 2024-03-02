@@ -87,105 +87,103 @@ class DataFrameAnalyzer:
 # Register the custom accessor on pandas DataFrame with the name "df_kit"
 pd.api.extensions.register_dataframe_accessor("df_kit")(DataFrameAnalyzer)
 
-
+# Import necessary libraries
+import json
+import os
+import pandas as pd
+import shlex
 from google.cloud import bigquery as bq
 from IPython.core.magic import register_cell_magic
 from IPython.display import display
-import shlex
-import json
+from google.api_core.exceptions import GoogleAPIError
+import logging
 
-def get_bigquery_client():
-  """
-  Retrieves a BigQuery client using the project ID from environment variables (using Colab-compatible approach).
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('BigQueryMagic')
 
-  Raises:
-      ValueError: If the BIGQUERY_PROJECT_ID environment variable is not set.
-  """
-  try:
-    # Attempt to get project ID from the environment using a generic approach
-    from google.colab import runtime
-    project_id = runtime.get_environ('BIGQUERY_PROJECT_ID')
-  except (ImportError, ModuleNotFoundError):
-    # Fallback to potentially existing os module (for compatibility with other environments)
-    try:
-      import os
-      project_id = os.environ.get("BIGQUERY_PROJECT_ID")
-    except NameError:
-      pass  # No os module, continue without project ID
+# Global configuration dictionary for BigQuery settings
+bigquery_config = {
+    'source': 'default-source',
+    'project_id': 'default-project-id',
+}
 
-  if not project_id:
-    raise ValueError("BIGQUERY_PROJECT_ID environment variable not set!")
-  return bq.Client(project=project_id)
-
+def configure_bigquery(source=None, project_id=None):
+    """
+    Updates the BigQuery configuration.
+    """
+    global bigquery_config
+    if source:
+        bigquery_config['source'] = source
+    if project_id:
+        bigquery_config['project_id'] = project_id
 
 @register_cell_magic
 def bigquery(line, cell):
+    """
+    Executes BigQuery SQL queries with optional parameters for enhanced functionalities.
+    """
+    args = shlex.split(line)
+    params = {}
+    output_file = None
 
-  # Ensure client is initialized
-  client = get_bigquery_client()
+    # Extract and process known arguments
+    for arg in args:
+        if arg.startswith('--source='):
+            bigquery_config['source'] = arg.split('=')[1]
+        elif arg.startswith('--project_id='):
+            bigquery_config['project_id'] = arg.split('=')[1]
+        elif arg.startswith('--params='):
+            params_str = arg.split('=')[1]
+            params = json.loads(params_str)
+        elif arg.startswith('--output_file='):
+            output_file = arg.split('=')[1]
+        elif arg == 'dry':
+            dry_run = True
+        else:
+            dataframe_var_name = arg  # Assume it's the DataFrame variable name
 
-  args = shlex.split(line)
-  dry_run = 'dry' in args
-  dataframe_var_name = None
-  output_file = None
-  params = {}
-
-  # Extract and remove known arguments
-  args = [arg for arg in args if not process_known_args(arg)]
-
-  # Remaining args processing
-  if args:
-    if not dry_run:  # Assume first arg is the DataFrame name if not a dry run
-      dataframe_var_name = args[0]
-
-  try:
-    job_config = bq.QueryJobConfig(dry_run=dry_run, use_query_cache=not dry_run, query_parameters=params)
+    try:
+        client = bq.Client(project=bigquery_config['project_id'])
+        job_config = bq.QueryJobConfig(dry_run='dry_run' in locals(), use_query_cache=True, query_parameters=params)
         
-    formatted_query = cell.format()  # No source needed with environment variables
-    query_job = client.query(formatted_query, job_config=job_config)
-        
-    if dry_run:
-      handle_dry_run(query_job)
-    else:
-      handle_query_execution(query_job, dataframe_var_name, output_file)
-  except GoogleAPIError as e:
-    print(f"GoogleAPIError: {str(e)}")
-  except Exception as e:
-    print("An unexpected error occurred")
+        formatted_query = cell.format(source=bigquery_config['source'])
+        query_job = client.query(formatted_query, job_config=job_config)
 
-
-def process_known_args(arg):
-  global params, output_file
-  if arg.startswith('--params='):
-    params_str = arg.split('=')[1]
-    params = json.loads(params_str)
-    return True
-  elif arg.startswith('--output_file='):
-    output_file = arg.split('=')[1]
-    return True
-  elif arg == 'dry':
-    return True
-  return False
+        if 'dry_run' in locals() and dry_run:
+            handle_dry_run(query_job)
+        else:
+            handle_query_execution(query_job, locals().get('dataframe_var_name'), output_file)
+    except GoogleAPIError as e:
+        logger.error(f"GoogleAPIError: {str(e)}")
+    except Exception as e:
+        logger.exception("An unexpected error occurred")
 
 def handle_dry_run(query_job):
-  """Handles a dry run query by logging the estimated bytes processed."""
-  print(f"Estimated bytes processed: {query_job.estimated_query_size}")
-
+    bytes_processed = query_job.total_bytes_processed
+    logger.info(f"Dry run: Estimated bytes to be processed: {bytes_processed} bytes.")
+    cost_per_tb = 5  # Assume $5 per TB as the cost
+    estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
+    logger.info(f"Estimated cost of the query: ${estimated_cost:.2f}")
 
 def handle_query_execution(query_job, dataframe_var_name, output_file):
-  """Handles query execution and result storage."""
-  results = query_job.result()
-
-  if output_file:
-    results.to_dataframe().to_csv(output_file)
-    print(f"Query results stored in {output_file}")
-  elif dataframe_var_name:
+    results = query_job.result()
     dataframe = results.to_dataframe()
-    ipython = get_ipython()
-    ipython.user_ns[dataframe_var_name] = dataframe
-    print(f"Query results stored in DataFrame '{dataframe_var_name}'.")
-  else:
-    display(results.to_dataframe())
+
+    if output_file:
+        # Ensure the file is saved to /content if no directory is specified
+        if not os.path.dirname(output_file):
+            output_file = os.path.join('/content', output_file)
+        dataframe.to_csv(output_file)
+        logger.info(f"Query results stored in {output_file}")
+    elif dataframe_var_name:
+        # Assign the results to a DataFrame variable in the user namespace
+        get_ipython().user_ns[dataframe_var_name] = dataframe
+        logger.info(f"Query results stored in DataFrame '{dataframe_var_name}'.")
+    else:
+        # Display the results directly
+        display(dataframe)
+
 
 
 if __name__ == "__main__":
