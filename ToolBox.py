@@ -85,6 +85,8 @@ import shlex
 from google.api_core.exceptions import GoogleAPIError
 import logging
 from ipywidgets import widgets
+import os
+
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -153,16 +155,20 @@ def process_known_args(arg):
         return True
     return False
 
-def handle_dry_run(query_job):
-    bytes_processed = query_job.total_bytes_processed
-    logger.info(f"Estimated bytes to be processed: {bytes_processed} bytes. The query syntax is correct.")
-    cost_per_tb = 5  # Assume $5 per TB as the cost
-    estimated_cost = (bytes_processed / (1024**4)) * cost_per_tb
-    logger.info(f"Estimated cost of the query: ${estimated_cost:.2f} USD. Consider optimizing your query if this cost seems high.")
-
 def handle_query_execution(query_job, dataframe_var_name, output_file):
     results = query_job.result()
+    # Define the default path as /content if only a filename is provided
+    default_path = "/content/"
+    
     if output_file:
+        # If output_file doesn't contain a path, prepend the default_path
+        if not os.path.dirname(output_file):
+            output_file = os.path.join(default_path, output_file)
+        
+        # Ensure the directory exists, create if it doesn't
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        
+        # Save the query results to the specified file
         results.to_dataframe().to_csv(output_file)
         logger.info(f"Query results stored in {output_file}")
     elif dataframe_var_name:
@@ -172,6 +178,7 @@ def handle_query_execution(query_job, dataframe_var_name, output_file):
         logger.info(f"Query results stored in DataFrame '{dataframe_var_name}'.")
     else:
         display(results.to_dataframe())
+
 
 
 if __name__ == "__main__":
